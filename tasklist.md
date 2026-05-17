@@ -19,26 +19,12 @@
 
 ---
 
-## Phase 2: Operational Features
+## Completed Phase 2: Operational Features
 
-### 2.1 Web Dashboard/API
-- HTTP server for remote monitoring
-- Endpoints:
-  - `GET /health` - health check
-  - `GET /status` - current monitoring status
-  - `GET /events` - recent alerts
-  - `GET /files` - tracked files count
-- Config: `http.enabled`, `http.port`, `http.addr`, `http.auth_token`
-
-### 2.2 Config Hot-Reload
-- Reload config on SIGHUP signal
-- Avoid restart for config changes
-- Track which settings require restart vs hot-reload
-
-### 2.3 Rate Limiting
-- Don't spam alerts on bulk file changes (e.g., plugin update)
-- Config: `rate_limit.enabled`, `rate_limit.window_sec`, `rate_limit.max_alerts`
-- Alert grouping for multiple issues
+- [x] Web API / HTTP server
+- [x] Health endpoint
+- [x] Config hot-reload (SIGHUP)
+- [x] Rate limiting
 
 ---
 
