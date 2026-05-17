@@ -7,22 +7,23 @@ import (
 )
 
 type Config struct {
-	WatchPath      string         `yaml:"watch_path"`
-	BaselinePath  string        `yaml:"baseline_path"`
+	WatchPath       string         `yaml:"watch_path"`
+	BaselinePath   string        `yaml:"baseline_path"`
 	QuarantinePath string       `yaml:"quarantine_path"`
-	LogPath      string        `yaml:"log_path"`
-	PollIntervalSec int        `yaml:"poll_interval_sec"`
-	AI           AIConfig      `yaml:"ai"`
-	Telegram     TelegramConfig `yaml:"telegram"`
-	Email        EmailConfig  `yaml:"email"`
-	Slack       SlackConfig  `yaml:"slack"`
-	Discord     DiscordConfig `yaml:"discord"`
-	Syslog      SyslogConfig `yaml:"syslog"`
-	Hooks       HooksConfig `yaml:"hooks"`
-	WordPress    WPConfig   `yaml:"wordpress"`
-	Scanner     ScannerConfig `yaml:"scanner"`
-	AutoFix     bool       `yaml:"auto_fix"`
-	NotifyOnClean bool      `yaml:"notify_on_clean"`
+	LogPath       string        `yaml:"log_path"`
+	PollIntervalSec int           `yaml:"poll_interval_sec"`
+	HTTP          HTTPConfig     `yaml:"http"`
+	AI            AIConfig      `yaml:"ai"`
+	Telegram      TelegramConfig `yaml:"telegram"`
+	Email         EmailConfig  `yaml:"email"`
+	Slack         SlackConfig  `yaml:"slack"`
+	Discord       DiscordConfig `yaml:"discord"`
+	Syslog        SyslogConfig `yaml:"syslog"`
+	Hooks         HooksConfig  `yaml:"hooks"`
+	WordPress     WPConfig    `yaml:"wordpress"`
+	Scanner       ScannerConfig `yaml:"scanner"`
+	AutoFix       bool       `yaml:"auto_fix"`
+	NotifyOnClean  bool       `yaml:"notify_on_clean"`
 }
 
 type AIConfig struct {
@@ -70,6 +71,19 @@ type SyslogConfig struct {
 	AppName string `yaml:"app_name"`
 }
 
+type HTTPConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Addr      string `yaml:"addr"`
+	Port     int    `yaml:"port"`
+	AuthToken string `yaml:"auth_token"`
+}
+
+type RateLimitConfig struct {
+	Enabled    bool  `yaml:"enabled"`
+	WindowSec int `yaml:"window_sec"`
+	MaxAlerts int `yaml:"max_alerts"`
+}
+
 type HooksConfig struct {
 	Enabled       bool     `yaml:"enabled"`
 	OnCritical   string   `yaml:"on_critical"`   // script path to run on critical alerts
@@ -115,6 +129,15 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Syslog.Port == 0 {
 		cfg.Syslog.Port = 514
+	}
+	if cfg.HTTP.Port == 0 {
+		cfg.HTTP.Port = 8080
+	}
+	if cfg.RateLimit.WindowSec == 0 {
+		cfg.RateLimit.WindowSec = 300 // 5 minutes
+	}
+	if cfg.RateLimit.MaxAlerts == 0 {
+		cfg.RateLimit.MaxAlerts = 5
 	}
 
 	return &cfg, nil
