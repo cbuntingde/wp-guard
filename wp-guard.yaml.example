@@ -1,0 +1,69 @@
+# Watch directory (WordPress root)
+watch_path: /var/www/html
+
+# Baseline storage
+baseline_path: /etc/wp-guard/baseline.json
+
+# Quarantine storage
+quarantine_path: /var/www/wp-guard-quarantine
+
+# Log file
+log_path: /var/log/wp-guard/events.log
+
+# How often to check for file changes (seconds)
+poll_interval_sec: 30
+
+# Auto-fix: quarantine suspicious files and restore from baseline
+auto_fix: true
+
+# Notify even when a clean file changes (update baseline silently)
+notify_on_clean: false
+
+# AI Triage (optional)
+ai:
+  enabled: false
+  provider: openrouter
+  model: anthropic/claude-3-haiku
+  api_key: ""
+  api_url: https://openrouter.ai/api/v1/chat/completions
+  system_prompt: |
+    You are a WordPress security analyzer. Given PHP code, respond with JSON:
+    {"malicious": bool, "confidence": 0.0-1.0, "reason": "...", "recommendation": "..."}
+
+# Telegram notifications
+telegram:
+  enabled: false
+  token: ""
+  chat_id: ""
+
+# WordPress paths
+wordpress:
+  core_files:
+    - wp-config.php
+    - wp-settings.php
+    - wp-load.php
+  themes_dir: wp-content/themes
+  plugins_dir: wp-content/plugins
+
+# Scanner settings
+scanner:
+  max_file_size_mb: 10
+  exclude_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .gif
+    - .svg
+    - .ico
+    - .pdf
+    - .zip
+    - .tar
+    - .gz
+    - .log
+  exclude_paths:
+    - wp-content/uploads
+    - wp-content/cache
+    - node_modules
+    - .git
+  suspicious_patterns:
+    # Add custom patterns here
