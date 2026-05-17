@@ -2,29 +2,34 @@ package notifier
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/smtp"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/cbuntingde/wp-guard/internal/config"
 )
 
 type Notifier struct {
-	cfg     config.TelegramConfig
-	emailCfg config.EmailConfig
-	logPath string
-	logFile *os.File
+	cfg       config.TelegramConfig
+	emailCfg  config.EmailConfig
+	hooksCfg  config.HooksConfig
+	logPath   string
+	logFile   *os.File
 }
 
-func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, logPath string) (*Notifier, error) {
+func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, hooksCfg config.HooksConfig, logPath string) (*Notifier, error) {
 	n := &Notifier{
 		cfg:      cfg,
 		emailCfg: emailCfg,
+		hooksCfg: hooksCfg,
 		logPath:  logPath,
 	}
 
@@ -74,6 +79,11 @@ func (n *Notifier) SendAlert(a Alert) error {
 		if err := n.sendEmail(msg, a.Severity); err != nil {
 			return err
 		}
+	}
+
+	// Run hooks if configured
+	if n.hooksCfg.Enabled {
+		n.runHook(a, msg)
 	}
 
 	return nil
@@ -217,6 +227,52 @@ func tlsDial(network, addr, hostname string) (net.Conn, error) {
 		return nil, err
 	}
 	return conn, nil
+}
+
+func (n *Notifier) runHook(a Alert, msg string) {
+	var script string
+	switch a.Severity {
+	case "CRITICAL":
+		script = n.hooksCfg.OnCritical
+	case "WARN":
+		script = n.hooksCfg.OnWarn
+	default:
+		script = n.hooksCfg.OnClean
+	}
+
+	if script == "" {
+		return
+	}
+
+	if _, err := os.Stat(script); err != nil {
+		log.Printf("[hooks] script not found: %s", script)
+		return
+	}
+
+	env := []string{
+		fmt.Sprintf("WP_ALERT_SEVERITY=%s", a.Severity),
+		fmt.Sprintf("WP_ALERT_FILE=%s", a.File),
+		fmt.Sprintf("WP_ALERT_EVENT=%s", a.EventType),
+		fmt.Sprintf("WP_ALERT_MESSAGE=%s", a.Message),
+	}
+	env = append(env, os.Environ()...)
+
+	timeout := n.hooksCfg.TimeoutSec
+	if timeout == 0 {
+		timeout = 30
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, script)
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Printf("[hooks] error running %s: %v", script, err)
+	}
 }
 
 func (n *Notifier) log(a Alert) {

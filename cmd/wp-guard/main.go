@@ -39,27 +39,97 @@ func printUsage() {
 
 Usage:
   wp-guard baseline       Initialize or refresh baseline
-  wp-guard scan          Scan for changes vs baseline
+  wp-guard scan          Scan all PHP files for malicious code
   wp-guard scan-plugin   Scan plugin(s) for malicious code
   wp-guard status       Show monitoring status
-  wp-guard version      Show version
 
 Run 'wp-guard <command> -h' for more info`)
 }
 
 func runScan() {
+	aiEnable := false
+
+	args := os.Args[2:]
+	for _, a := range args {
+		if a == "--ai" || a == "-ai" {
+			aiEnable = true
+		}
+	}
+
 	cfg, err := config.Load("wp-guard.yaml")
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
-	base, err := store.LoadBaseline(cfg.BaselinePath)
-	if err != nil {
-		log.Fatalf("baseline: %v", err)
+	scan := scanner.NewScanner(cfg.Scanner, cfg.AI)
+
+	aiEnabled = cfg.AI.Enabled || aiEnable
+	if aiEnabled && cfg.AI.APIKey == "" {
+		log.Fatal("AI enabled but api_key not set in config")
 	}
 
-	fmt.Printf("Baseline: %d files tracked\n", len(base.Files))
-	fmt.Printf("Watch path: %s\n", cfg.WatchPath)
+	var results []scanner.Result
+	var filesScanned int
+
+	err = filepath.Walk(cfg.WatchPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) != ".php" {
+			return nil
+		}
+
+		rel, _ := filepath.Rel(cfg.WatchPath, path)
+		for _, ex := range cfg.Scanner.ExcludePaths {
+			if strings.HasPrefix(rel, ex) {
+				return nil
+			}
+		}
+
+		// Check skip patterns
+		for _, skip := range cfg.Scanner.SkipPatterns {
+			if strings.Contains(rel, skip) {
+				return nil
+			}
+		}
+
+		res, err := scan.ScanFile(path)
+		if err != nil {
+			log.Printf("scan %s: %v", path, err)
+			return nil
+		}
+		filesScanned++
+		results = append(results, res...)
+		return nil
+	})
+
+	if err != nil {
+		log.Fatalf("walk: %v", err)
+	}
+
+	groupBySeverity(results)
+
+	if aiEnabled && len(results) > 0 {
+		fmt.Println("\n--- AI Triage ---")
+		ctx := context.Background()
+		for _, r := range results {
+			if r.Severity == scanner.WARN || r.Severity == scanner.CRITICAL {
+				code := extractCodeSnippet(r.File, r.Line)
+				triage, err := scan.AITriage(ctx, r.File, code)
+				if err != nil {
+					log.Printf("triage %s: %v", r.File, err)
+					continue
+				}
+				fmt.Printf("\n%s:%d:\n  %s\n  AI: malicious=%v confidence=%.2f\n  %s\n",
+					r.File, r.Line, r.Message, triage.Malicious, triage.Confidence, triage.Recommendation)
+			}
+		}
+	}
+
+	fmt.Printf("\nScanned %d PHP files in %s\n", filesScanned, cfg.WatchPath)
 }
 
 func runBaseline() {

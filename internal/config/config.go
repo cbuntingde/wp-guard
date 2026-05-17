@@ -7,18 +7,19 @@ import (
 )
 
 type Config struct {
-	WatchPath       string         `yaml:"watch_path"`
-	BaselinePath    string         `yaml:"baseline_path"`
-	QuarantinePath  string         `yaml:"quarantine_path"`
-	LogPath         string         `yaml:"log_path"`
-	PollIntervalSec int            `yaml:"poll_interval_sec"`
-	AI              AIConfig       `yaml:"ai"`
-	Telegram        TelegramConfig `yaml:"telegram"`
-	Email           EmailConfig    `yaml:"email"`
-	WordPress       WPConfig       `yaml:"wordpress"`
-	Scanner         ScannerConfig  `yaml:"scanner"`
-	AutoFix         bool           `yaml:"auto_fix"`
-	NotifyOnClean   bool           `yaml:"notify_on_clean"`
+	WatchPath       string            `yaml:"watch_path"`
+	BaselinePath   string            `yaml:"baseline_path"`
+	QuarantinePath string            `yaml:"quarantine_path"`
+	LogPath       string            `yaml:"log_path"`
+	PollIntervalSec int               `yaml:"poll_interval_sec"`
+	AI            AIConfig          `yaml:"ai"`
+	Telegram      TelegramConfig   `yaml:"telegram"`
+	Email        EmailConfig      `yaml:"email"`
+	Hooks        HooksConfig      `yaml:"hooks"`
+	WordPress     WPConfig        `yaml:"wordpress"`
+	Scanner      ScannerConfig   `yaml:"scanner"`
+	AutoFix      bool            `yaml:"auto_fix"`
+	NotifyOnClean bool           `yaml:"notify_on_clean"`
 }
 
 type AIConfig struct {
@@ -47,6 +48,14 @@ type EmailConfig struct {
 	UseTLS     bool   `yaml:"use_tls"`
 }
 
+type HooksConfig struct {
+	Enabled       bool     `yaml:"enabled"`
+	OnCritical   string   `yaml:"on_critical"`   // script path to run on critical alerts
+	OnWarn       string   `yaml:"on_warn"`     // script path to run on warnings
+	OnClean      string   `yaml:"on_clean"`    // script path to run on clean baseline update
+	TimeoutSec   int      `yaml:"timeout_sec"`
+}
+
 type WPConfig struct {
 	CoreFiles []string `yaml:"core_files"` // files that should NOT change
 	ThemesDir string   `yaml:"themes_dir"`
@@ -54,10 +63,11 @@ type WPConfig struct {
 }
 
 type ScannerConfig struct {
-	SuspiciousPatterns []string           `yaml:"suspicious_patterns"`
-	MaxFileSizeMB      int                `yaml:"max_file_size_mb"`
-	ExcludeExtensions  []string           `yaml:"exclude_extensions"`
-	ExcludePaths       []string           `yaml:"exclude_paths"`
+	SuspiciousPatterns []string `yaml:"suspicious_patterns"`
+	MaxFileSizeMB     int     `yaml:"max_file_size_mb"`
+	ExcludeExtensions []string `yaml:"exclude_extensions"`
+	ExcludePaths      []string `yaml:"exclude_paths"`
+	SkipPatterns      []string `yaml:"skip_patterns"` // patterns to ignore in full scan (e.g., "-plugin-slug")
 }
 
 func Load(path string) (*Config, error) {

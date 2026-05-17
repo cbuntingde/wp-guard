@@ -76,6 +76,16 @@ scanner:
   exclude_paths:
     - wp-content/uploads
     - wp-content/cache
+  skip_patterns:
+    - wordpress-seo  # ignore auto-updating plugins
+
+# Hooks (run custom scripts on alerts)
+hooks:
+  enabled: true
+  on_critical: "/etc/wp-guard/scripts/alert.sh"
+  on_warn: ""
+  on_clean: ""
+  timeout_sec: 30
 ```
 
 ## Architecture

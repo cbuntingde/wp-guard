@@ -47,6 +47,14 @@ email:
   to: ""
   use_tls: true
 
+# Hooks - run custom scripts on events
+hooks:
+  enabled: false
+  on_critical: "/etc/wp-guard/scripts/alert-critical.sh"
+  on_warn: ""
+  on_clean: ""
+  timeout_sec: 30
+
 # WordPress paths
 wordpress:
   core_files:
@@ -76,5 +84,9 @@ scanner:
     - wp-content/cache
     - node_modules
     - .git
+  # Skip patterns - paths containing these strings are ignored during scan
+  skip_patterns:
+    # - wordpress-seo  # auto-updating plugin
+    # - jetpack
   suspicious_patterns:
     # Add custom patterns here
