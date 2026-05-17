@@ -92,7 +92,7 @@ func main() {
 
 	// Setup notifier
 	// Setup notifier
-		notif, err := notifier.NewNotifier(cfg.Telegram, cfg.Email, cfg.Hooks, cfg.LogPath)
+		notif, err := notifier.NewNotifier(cfg.Telegram, cfg.Email, cfg.Slack, cfg.Discord, cfg.Syslog, cfg.Hooks, cfg.LogPath)
 		if err != nil {
 			log.Printf("notifier warning: %v", err)
 		}

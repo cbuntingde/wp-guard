@@ -7,19 +7,22 @@ import (
 )
 
 type Config struct {
-	WatchPath       string            `yaml:"watch_path"`
-	BaselinePath   string            `yaml:"baseline_path"`
-	QuarantinePath string            `yaml:"quarantine_path"`
-	LogPath       string            `yaml:"log_path"`
-	PollIntervalSec int               `yaml:"poll_interval_sec"`
-	AI            AIConfig          `yaml:"ai"`
-	Telegram      TelegramConfig   `yaml:"telegram"`
-	Email        EmailConfig      `yaml:"email"`
-	Hooks        HooksConfig      `yaml:"hooks"`
-	WordPress     WPConfig        `yaml:"wordpress"`
-	Scanner      ScannerConfig   `yaml:"scanner"`
-	AutoFix      bool            `yaml:"auto_fix"`
-	NotifyOnClean bool           `yaml:"notify_on_clean"`
+	WatchPath      string         `yaml:"watch_path"`
+	BaselinePath  string        `yaml:"baseline_path"`
+	QuarantinePath string       `yaml:"quarantine_path"`
+	LogPath      string        `yaml:"log_path"`
+	PollIntervalSec int        `yaml:"poll_interval_sec"`
+	AI           AIConfig      `yaml:"ai"`
+	Telegram     TelegramConfig `yaml:"telegram"`
+	Email        EmailConfig  `yaml:"email"`
+	Slack       SlackConfig  `yaml:"slack"`
+	Discord     DiscordConfig `yaml:"discord"`
+	Syslog      SyslogConfig `yaml:"syslog"`
+	Hooks       HooksConfig `yaml:"hooks"`
+	WordPress    WPConfig   `yaml:"wordpress"`
+	Scanner     ScannerConfig `yaml:"scanner"`
+	AutoFix     bool       `yaml:"auto_fix"`
+	NotifyOnClean bool      `yaml:"notify_on_clean"`
 }
 
 type AIConfig struct {
@@ -46,6 +49,25 @@ type EmailConfig struct {
 	From       string `yaml:"from"`
 	To         string `yaml:"to"`
 	UseTLS     bool   `yaml:"use_tls"`
+}
+
+type SlackConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"`
+	Channel   string `yaml:"channel"`
+	Username  string `yaml:"username"`
+}
+
+type DiscordConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"`
+}
+
+type SyslogConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	AppName string `yaml:"app_name"`
 }
 
 type HooksConfig struct {
@@ -90,6 +112,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Email.SMTPPort == 0 {
 		cfg.Email.SMTPPort = 587
+	}
+	if cfg.Syslog.Port == 0 {
+		cfg.Syslog.Port = 514
 	}
 
 	return &cfg, nil

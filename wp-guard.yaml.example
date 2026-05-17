@@ -47,6 +47,25 @@ email:
   to: ""
   use_tls: true
 
+# Slack notifications
+slack:
+  enabled: false
+  webhook_url: ""
+  channel: "#security"
+  username: "wp-guard"
+
+# Discord notifications
+discord:
+  enabled: false
+  webhook_url: ""
+
+# Syslog notifications
+syslog:
+  enabled: false
+  host: "localhost"
+  port: 514
+  app_name: "wp-guard"
+
 # Hooks - run custom scripts on events
 hooks:
   enabled: false

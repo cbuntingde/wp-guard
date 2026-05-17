@@ -61,6 +61,25 @@ email:
   to: "alert@example.com"
   use_tls: true
 
+# Slack notification
+slack:
+  enabled: true
+  webhook_url: "https://hooks.slack.com/services/XXX"
+  channel: "#security"
+  username: "wp-guard"
+
+# Discord notification
+discord:
+  enabled: true
+  webhook_url: "https://discord.com/api/webhooks/XXX"
+
+# Syslog notification
+syslog:
+  enabled: true
+  host: "localhost"
+  port: 514
+  app_name: "wp-guard"
+
 ai:
   enabled: true
   provider: openrouter

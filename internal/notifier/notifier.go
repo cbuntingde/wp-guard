@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -20,17 +21,23 @@ import (
 type Notifier struct {
 	cfg       config.TelegramConfig
 	emailCfg  config.EmailConfig
+	slackCfg  config.SlackConfig
+	discordCfg config.DiscordConfig
+	syslogCfg config.SyslogConfig
 	hooksCfg  config.HooksConfig
-	logPath   string
-	logFile   *os.File
+	logPath  string
+	logFile  *os.File
 }
 
-func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, hooksCfg config.HooksConfig, logPath string) (*Notifier, error) {
+func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, slackCfg config.SlackConfig, discordCfg config.DiscordConfig, syslogCfg config.SyslogConfig, hooksCfg config.HooksConfig, logPath string) (*Notifier, error) {
 	n := &Notifier{
-		cfg:      cfg,
-		emailCfg: emailCfg,
-		hooksCfg: hooksCfg,
-		logPath:  logPath,
+		cfg:        cfg,
+		emailCfg:   emailCfg,
+		slackCfg:   slackCfg,
+		discordCfg: discordCfg,
+		syslogCfg: syslogCfg,
+		hooksCfg:  hooksCfg,
+		logPath:   logPath,
 	}
 
 	if logPath != "" {
@@ -77,6 +84,27 @@ func (n *Notifier) SendAlert(a Alert) error {
 	// Send Email if configured
 	if n.emailCfg.Enabled {
 		if err := n.sendEmail(msg, a.Severity); err != nil {
+			return err
+		}
+	}
+
+	// Send Slack if configured
+	if n.slackCfg.Enabled {
+		if err := n.sendSlack(msg, a.Severity); err != nil {
+			return err
+		}
+	}
+
+	// Send Discord if configured
+	if n.discordCfg.Enabled {
+		if err := n.sendDiscord(msg, a.Severity); err != nil {
+			return err
+		}
+	}
+
+	// Send Syslog if configured
+	if n.syslogCfg.Enabled {
+		if err := n.sendSyslog(a); err != nil {
 			return err
 		}
 	}
@@ -215,6 +243,105 @@ func (n *Notifier) sendEmail(text string, severity string) error {
 	}
 
 	return c.Quit()
+}
+
+func (n *Notifier) sendSlack(text string, severity string) error {
+	color := "#36a64f" // green
+	if severity == "CRITICAL" {
+		color = "#ff0000" // red
+	} else if severity == "WARN" {
+		color = "#ff9900" // orange
+	}
+
+	payload := map[string]interface{}{
+		"channel": n.slackCfg.Channel,
+		"username": n.slackCfg.Username,
+		"attachments": []map[string]interface{}{
+			{
+				"color":     color,
+				"text":     text,
+				"mrkdwn_in": []string{"text"},
+			},
+		},
+	}
+
+	body, _ := json.Marshal(payload)
+	resp, err := http.Post(n.slackCfg.WebhookURL, "application/json", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("slack error: %s", resp.Status)
+	}
+	return nil
+}
+
+func (n *Notifier) sendDiscord(text string, severity string) error {
+	color := 0x36a64f // green
+	if severity == "CRITICAL" {
+		color = 0xff0000 // red
+	} else if severity == "WARN" {
+		color = 0xff9900 // orange
+	}
+
+	// Discord username
+	username := "wp-guard"
+	if n.cfg.Enabled {
+		username = "wp-guard"
+	}
+
+	payload := map[string]interface{}{
+		"username": username,
+		"embeds": []map[string]interface{}{
+			{
+				"color":       color,
+				"description": text,
+			},
+		},
+	}
+
+	body, _ := json.Marshal(payload)
+	resp, err := http.Post(n.discordCfg.WebhookURL, "application/json", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("discord error: %s", resp.Status)
+	}
+	return nil
+}
+
+func (n *Notifier) sendSyslog(a Alert) error {
+	priority := 14 // LOG_INFO | LOG_USER
+	switch a.Severity {
+	case "CRITICAL":
+		priority = 2 // LOG_CRIT | LOG_USER
+	case "WARN":
+		priority = 10 // LOG_WARNING | LOG_USER
+	}
+
+	syslogMsg := fmt.Sprintf("<%d>%s: [%s] %s - %s: %s",
+		priority,
+		n.syslogCfg.AppName,
+		a.Severity,
+		a.EventType,
+		a.File,
+		a.Message,
+	)
+
+	addr := fmt.Sprintf("%s:%d", n.syslogCfg.Host, n.syslogCfg.Port)
+	conn, err := net.Dial("udp", addr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	_, err = conn.Write([]byte(syslogMsg))
+	return err
 }
 
 func tlsDial(network, addr, hostname string) (net.Conn, error) {
