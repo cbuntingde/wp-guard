@@ -266,14 +266,20 @@ func (n *Notifier) sendSlack(text string, severity string) error {
 	}
 
 	body, _ := json.Marshal(payload)
-	resp, err := http.Post(n.slackCfg.WebhookURL, "application/json", bytes.NewReader(body))
+
+	// Use client with timeout
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Post(n.slackCfg.WebhookURL, "application/json", bytes.NewReader(body))
 	if err != nil {
+		log.Printf("[slack] send error: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("slack error: %s", resp.Status)
+		err = fmt.Errorf("slack error: %s", resp.Status)
+		log.Printf("[slack] error: %v", err)
+		return err
 	}
 	return nil
 }
@@ -303,14 +309,20 @@ func (n *Notifier) sendDiscord(text string, severity string) error {
 	}
 
 	body, _ := json.Marshal(payload)
-	resp, err := http.Post(n.discordCfg.WebhookURL, "application/json", bytes.NewReader(body))
+
+	// Use client with timeout
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Post(n.discordCfg.WebhookURL, "application/json", bytes.NewReader(body))
 	if err != nil {
+		log.Printf("[discord] send error: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("discord error: %s", resp.Status)
+		err = fmt.Errorf("discord error: %s", resp.Status)
+		log.Printf("[discord] error: %v", err)
+		return err
 	}
 	return nil
 }
