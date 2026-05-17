@@ -34,7 +34,7 @@ func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, hooksCf
 	}
 
 	if logPath != "" {
-		f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			return nil, err
 		}
