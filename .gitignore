@@ -1,0 +1,13 @@
+# Config files with secrets - do not commit
+wp-guard.yaml
+*.local.yaml
+
+# Build artifacts
+wp-guard
+wp-guard.exe
+
+# Logs
+*.log
+
+# Quarantine
+*-quarantine/

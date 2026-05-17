@@ -2,9 +2,12 @@ package notifier
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/smtp"
 	"os"
 	"time"
 
@@ -13,14 +16,16 @@ import (
 
 type Notifier struct {
 	cfg     config.TelegramConfig
+	emailCfg config.EmailConfig
 	logPath string
 	logFile *os.File
 }
 
-func NewNotifier(cfg config.TelegramConfig, logPath string) (*Notifier, error) {
+func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, logPath string) (*Notifier, error) {
 	n := &Notifier{
-		cfg:     cfg,
-		logPath: logPath,
+		cfg:      cfg,
+		emailCfg: emailCfg,
+		logPath:  logPath,
 	}
 
 	if logPath != "" {
@@ -59,7 +64,16 @@ func (n *Notifier) SendAlert(a Alert) error {
 
 	// Send Telegram if configured
 	if n.cfg.Enabled {
-		return n.sendTelegram(msg)
+		if err := n.sendTelegram(msg); err != nil {
+			return err
+		}
+	}
+
+	// Send Email if configured
+	if n.emailCfg.Enabled {
+		if err := n.sendEmail(msg, a.Severity); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -122,6 +136,87 @@ func (n *Notifier) sendTelegram(text string) error {
 	}
 
 	return nil
+}
+
+func (n *Notifier) sendEmail(text string, severity string) error {
+	from := n.emailCfg.From
+	if from == "" {
+		from = n.emailCfg.SMTPUser
+	}
+	to := n.emailCfg.To
+
+	subject := fmt.Sprintf("[wp-guard] Security Alert: %s", severity)
+	header := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n", from, to, subject)
+	if n.emailCfg.UseTLS {
+		header += "MIME-version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n"
+	}
+	header += "\r\n"
+
+	msg := []byte(header + text)
+
+	addr := fmt.Sprintf("%s:%d", n.emailCfg.SMTPHost, n.emailCfg.SMTPPort)
+
+	var auth smtp.Auth
+	if n.emailCfg.SMTPUser != "" {
+		auth = smtp.PlainAuth("", n.emailCfg.SMTPUser, n.emailCfg.SMTPPass, n.emailCfg.SMTPHost)
+	}
+
+	var conn net.Conn
+	var err error
+	if n.emailCfg.UseTLS {
+		conn, err = tlsDial("tcp", addr, n.emailCfg.SMTPHost)
+	} else {
+		conn, err = net.Dial("tcp", addr)
+	}
+	if err != nil {
+		return fmt.Errorf("dial: %v", err)
+	}
+	defer conn.Close()
+
+	c, err := smtp.NewClient(conn, n.emailCfg.SMTPHost)
+	if err != nil {
+		return fmt.Errorf("smtp client: %v", err)
+	}
+
+	if auth != nil {
+		if err = c.Auth(auth); err != nil {
+			return fmt.Errorf("auth: %v", err)
+		}
+	}
+
+	if err = c.Mail(from); err != nil {
+		return fmt.Errorf("mail: %v", err)
+	}
+	if err = c.Rcpt(to); err != nil {
+		return fmt.Errorf("rcpt: %v", err)
+	}
+
+	w, err := c.Data()
+	if err != nil {
+		return fmt.Errorf("data: %v", err)
+	}
+	_, err = w.Write(msg)
+	if err != nil {
+		return fmt.Errorf("write: %v", err)
+	}
+	err = w.Close()
+	if err != nil {
+		return fmt.Errorf("close: %v", err)
+	}
+
+	return c.Quit()
+}
+
+func tlsDial(network, addr, hostname string) (net.Conn, error) {
+	tlsConfig := &tls.Config{
+		ServerName:         hostname,
+		InsecureSkipVerify: false,
+	}
+	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 func (n *Notifier) log(a Alert) {

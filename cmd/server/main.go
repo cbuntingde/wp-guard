@@ -91,7 +91,12 @@ func main() {
 	}
 
 	// Setup notifier
-	notif, err := notifier.NewNotifier(cfg.Telegram, cfg.LogPath)
+	// Setup notifier
+		notif, err := notifier.NewNotifier(cfg.Telegram, cfg.Email, cfg.LogPath)
+		if err != nil {
+			log.Printf("notifier warning: %v", err)
+		}
+		defer notif.Close()
 	if err != nil {
 		log.Printf("notifier warning: %v", err)
 	}

@@ -36,6 +36,17 @@ telegram:
   token: ""
   chat_id: ""
 
+# Email notifications
+email:
+  enabled: false
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_user: ""
+  smtp_pass: ""
+  from: ""
+  to: ""
+  use_tls: true
+
 # WordPress paths
 wordpress:
   core_files:

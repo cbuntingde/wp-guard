@@ -14,6 +14,7 @@ type Config struct {
 	PollIntervalSec int            `yaml:"poll_interval_sec"`
 	AI              AIConfig       `yaml:"ai"`
 	Telegram        TelegramConfig `yaml:"telegram"`
+	Email           EmailConfig    `yaml:"email"`
 	WordPress       WPConfig       `yaml:"wordpress"`
 	Scanner         ScannerConfig  `yaml:"scanner"`
 	AutoFix         bool           `yaml:"auto_fix"`
@@ -33,6 +34,17 @@ type TelegramConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Token   string `yaml:"token"`
 	ChatID  string `yaml:"chat_id"`
+}
+
+type EmailConfig struct {
+	Enabled     bool   `yaml:"enabled"`
+	SMTPHost    string `yaml:"smtp_host"`
+	SMTPPort    int    `yaml:"smtp_port"`
+	SMTPUser    string `yaml:"smtp_user"`
+	SMTPPass    string `yaml:"smtp_pass"`
+	From       string `yaml:"from"`
+	To         string `yaml:"to"`
+	UseTLS     bool   `yaml:"use_tls"`
 }
 
 type WPConfig struct {
@@ -65,6 +77,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Scanner.MaxFileSizeMB == 0 {
 		cfg.Scanner.MaxFileSizeMB = 10
+	}
+	if cfg.Email.SMTPPort == 0 {
+		cfg.Email.SMTPPort = 587
 	}
 
 	return &cfg, nil

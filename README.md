@@ -18,12 +18,18 @@ Runs as a separate daemon — if WordPress goes down, wp-guard keeps watching an
 ```bash
 # Build
 go build -o wp-guard ./cmd/server
+go build -o wp-guard ./cmd/wp-guard
 
 # Initialize baseline (first run)
 ./wp-guard baseline --config wp-guard.yaml
 
 # Start daemon
 ./wp-guard run --config wp-guard.yaml
+
+# Scan plugins for malicious code
+./wp-guard scan-plugin                    # Scan all plugins
+./wp-guard scan-plugin -plugin akismet   # Scan specific plugin
+./wp-guard scan-plugin --ai             # Enable AI triage
 
 # Or install as systemd service
 sudo ./scripts/install.sh
@@ -43,6 +49,17 @@ telegram:
   enabled: true
   token: "YOUR_BOT_TOKEN"
   chat_id: "YOUR_CHAT_ID"
+
+# Or email (SMTP)
+email:
+  enabled: true
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_user: "your-email@gmail.com"
+  smtp_pass: "your-app-password"
+  from: "your-email@gmail.com"
+  to: "alert@example.com"
+  use_tls: true
 
 ai:
   enabled: true
@@ -106,6 +123,9 @@ wp-guard/
 
 ## Security notes
 
-- Run on a separate host/VM from the WordPress server if possible
+wp-guard monitors files by local path access. For direct monitoring, it runs on the same host as WordPress. Optionally, you can run wp-guard on a separate host/VM for added isolation — mount WordPress files via NFS or SSHFS, then point `watch_path` to the mounted path.
+
 - wp-guard process should have read-only access to WordPress files and write access only to quarantine/ and log directories
-- Never run wp-guard as root in production (use dedicated service account)
+- Never run wp-guard as root in production (use a dedicated service account)
+- Protect config file (wp-guard.yaml) with `chmod 600 wp-guard.yaml` — it contains API keys/tokens
+- Store sensitive credentials in a file with restricted permissions, not in version control
