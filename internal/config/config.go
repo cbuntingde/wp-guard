@@ -11,6 +11,7 @@ type Config struct {
 	BaselinePath   string        `yaml:"baseline_path"`
 	QuarantinePath string       `yaml:"quarantine_path"`
 	LogPath       string        `yaml:"log_path"`
+	LogFormat     string        `yaml:"log_format"`
 	PollIntervalSec int           `yaml:"poll_interval_sec"`
 	HTTP          HTTPConfig     `yaml:"http"`
 	AI            AIConfig      `yaml:"ai"`

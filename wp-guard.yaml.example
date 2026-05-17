@@ -9,6 +9,7 @@ quarantine_path: /var/www/wp-guard-quarantine
 
 # Log file
 log_path: /var/log/wp-guard/events.log
+log_format: text  # text or json
 
 # How often to check for file changes (seconds)
 poll_interval_sec: 30

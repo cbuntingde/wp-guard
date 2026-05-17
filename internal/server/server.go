@@ -104,6 +104,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/status", s.handleStatus)
 	mux.HandleFunc("/events", s.handleEvents)
 	mux.HandleFunc("/reload", s.handleReload)
+	mux.HandleFunc("/metrics", s.handleMetrics)
 
 	// Auth middleware
 	handler := authMiddleware(s.cfg.HTTP.AuthToken, mux)
@@ -213,6 +214,44 @@ func (s *Server) handleReload(w http.ResponseWriter, r *http.Request) {
 		"status": "reloading",
 	})
 	// Signal main to reload
+}
+
+func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	now := time.Now()
+	cutoff := now.Add(-24 * time.Hour)
+	alerts24h := 0
+	critical24h := 0
+	for _, a := range s.alerts {
+		if a.Timestamp > cutoff.Format(time.RFC3339) {
+			alerts24h++
+			if a.Severity == "CRITICAL" {
+				critical24h++
+			}
+		}
+	}
+
+	metrics := fmt.Sprintf(`# HELP wp_guard_files_tracked Total files tracked
+# TYPE wp_guard_files_tracked gauge
+wp_guard_files_tracked %d
+# HELP wp_guard_alerts_total Total alerts sent
+# TYPE wp_guard_alerts_total counter
+wp_guard_alerts_total %d
+# HELP wp_guard_alerts_24h Alerts in last 24 hours
+# TYPE wp_guard_alerts_24h gauge
+wp_guard_alerts_24h %d
+# HELP wp_guard_critical_24h Critical alerts in last 24 hours
+# TYPE wp_guard_critical_24h gauge
+wp_guard_critical_24h %d
+# HELP wp_guard_last_scan_timestamp Unix timestamp of last scan
+# TYPE wp_guard_last_scan_timestamp gauge
+wp_guard_last_scan_timestamp %d
+`, len(s.baseline.Files), len(s.alerts), alerts24h, critical24h, now.Unix())
+
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprint(w, metrics)
 }
 
 func (s *Server) RecordAlert(event, file, severity, message string) {
