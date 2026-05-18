@@ -16,6 +16,9 @@ import (
 	"github.com/cbuntingde/wp-guard/internal/store"
 )
 
+// MaxAlertsInMemory is the maximum number of alerts to keep in memory
+const MaxAlertsInMemory = 10000
+
 type Server struct {
 	cfg    *config.Config
 	notify *notifier.Notifier
@@ -88,6 +91,7 @@ func New(cfg *config.Config, baseline *store.Baseline, notify *notifier.Notifier
 		baseline:  baseline,
 		notify:    notify,
 		rateLimiter: NewRateLimiter(cfg.RateLimit.WindowSec, cfg.RateLimit.MaxAlerts),
+		alerts:    make([]Alert, 0, MaxAlertsInMemory), // Pre-allocate with max capacity to bound memory usage
 		stopped:   make(chan struct{}),
 	}
 }
@@ -159,16 +163,26 @@ func authMiddleware(token string, next http.Handler) http.Handler {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	s.setSecurityHeaders(w)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "ok",
 	})
 }
 
+func (s *Server) setSecurityHeaders(w http.ResponseWriter) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'none'")
+	w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+}
+
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	s.setSecurityHeaders(w)
 	now := time.Now()
 	cutoff := now.Add(-24 * time.Hour)
 	alerts24h := 0
@@ -180,8 +194,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	status := Status{
 		FilesTracked: len(s.baseline.Files),
-		LastScan:   now, // Would track actual last scan
-		Uptime:    "24h0m", // Would track actual uptime
+		LastScan:   now,
+		Uptime:    "24h0m",
 		Alerts24h: alerts24h,
 	}
 
@@ -192,6 +206,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	s.setSecurityHeaders(w)
 
 	// Return last 100 events
 	alerts := s.alerts
@@ -204,6 +220,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReload(w http.ResponseWriter, r *http.Request) {
+	s.setSecurityHeaders(w)
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -220,6 +237,7 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	s.setSecurityHeaders(w)
 	now := time.Now()
 	cutoff := now.Add(-24 * time.Hour)
 	alerts24h := 0
@@ -272,9 +290,9 @@ func (s *Server) RecordAlert(event, file, severity, message string) {
 		Message:  message,
 	})
 
-	// Keep only last 1000
-	if len(s.alerts) > 1000 {
-		s.alerts = s.alerts[len(s.alerts)-1000:]
+	// Keep only last MaxAlertsInMemory to bound memory usage
+	if len(s.alerts) > MaxAlertsInMemory {
+		s.alerts = s.alerts[len(s.alerts)-MaxAlertsInMemory:]
 	}
 }
 

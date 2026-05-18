@@ -95,6 +95,8 @@ func (w *Watcher) fsnotifyLoop(ctx context.Context) {
 
 func (w *Watcher) pollLoop(ctx context.Context) {
 	defer w.wg.Done()
+	// Currently not used - fsnotifyLoop handles polling
+	// Reserved for future fsnotify integration if needed
 }
 
 func (w *Watcher) checkForChanges(ctx context.Context) {

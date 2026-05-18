@@ -50,9 +50,14 @@ func (m *Manager) QuarantineFile(path string) error {
 	quarName := fmt.Sprintf("%s_%s", ts, orig)
 	quarPath := filepath.Join(m.quarantine, quarName)
 
-	// Write to quarantine
+	// Write to quarantine with secure permissions (owner read/write only)
 	if err := os.WriteFile(quarPath, data, 0600); err != nil {
 		return fmt.Errorf("writing quarantine: %w", err)
+	}
+
+	// Ensure quarantine directory has secure permissions
+	if err := os.Chmod(m.quarantine, 0700); err != nil {
+		return fmt.Errorf("securing quarantine dir: %w", err)
 	}
 
 	log.Printf("[quarantine] moved %s -> %s", path, quarPath)

@@ -48,7 +48,6 @@ Run 'wp-guard <command> -h' for more info`)
 
 func runScan() {
 	aiEnable := false
-	aiEnabled := false
 
 	args := os.Args[2:]
 	for _, a := range args {
@@ -64,7 +63,7 @@ func runScan() {
 
 	scan := scanner.NewScanner(cfg.Scanner, cfg.AI)
 
-	aiEnabled = cfg.AI.Enabled || aiEnable
+	aiEnabled := cfg.AI.Enabled || aiEnable
 	if aiEnabled && cfg.AI.APIKey == "" {
 		log.Fatal("AI enabled but api_key not set in config")
 	}

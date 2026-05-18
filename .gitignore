@@ -1,13 +1,51 @@
+# Binaries
+wp-guard
+wp-guard.exe
+wp-guard-server
+wp-guard-cli
+/bin/
+
 # Config files with secrets - do not commit
 wp-guard.yaml
 *.local.yaml
+*.yamlt
+config.yaml
 
 # Build artifacts
-wp-guard
-wp-guard.exe
+/bin/
+/obj/
 
 # Logs
 *.log
+/logs/
 
-# Quarantine
+# Quarantine (runtime directories)
 *-quarantine/
+quarantine/
+baseline*.json
+baseline.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.test
+coverage.txt
+
+# Backups (runtime)
+backups/
+*.bak
+
+# Secrets (runtime)
+.env
+.env.*
+*.pem
+*.key

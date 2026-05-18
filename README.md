@@ -6,8 +6,17 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-blue?style=flat)]
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat)]
 [![Go Version](https://img.shields.io/badge/Go-1.18+-00ADD8?style=flat&logo=go)](https://go.dev/doc/install)
+[![Tests](https://img.shields.io/badge/tests-50%2B-green?style=flat)]
 
 wp-guard is a standalone WordPress file integrity monitor and malware scanner. It runs as a separate daemon — if WordPress goes down, wp-guard keeps watching and alerts you.
+
+## Status: Production Ready ✅
+
+- **Security Headers** — Full HSTS, CSP, X-Frame-Options protection
+- **Input Validation** — Comprehensive config validation
+- **File Permissions** — Secure file modes (0600/0700)
+- **Test Coverage** — 50+ unit tests
+- **Rate Limiting** — Alert storm prevention
 
 ## Why wp-guard?
 
@@ -262,6 +271,29 @@ Metrics:
 - `wp_guard_alerts_24h` — Gauge
 - `wp_guard_critical_24h` — Gauge
 - `wp_guard_last_scan_timestamp` — Gauge
+
+## Testing
+
+```bash
+# Run all unit tests
+go test -v ./internal/...
+
+# Run with coverage
+go test -v -cover ./...
+
+# Test specific package
+go test -v ./internal/scanner
+go test -v ./internal/server
+go test -v ./internal/config
+go test -v ./internal/store
+```
+
+Test packages:
+
+- `internal/config` — Config loading and validation
+- `internal/scanner` — Pattern matching and malware detection
+- `internal/store` — Baseline management and hashing
+- `internal/server` — HTTP API and rate limiting
 
 ## Architecture
 

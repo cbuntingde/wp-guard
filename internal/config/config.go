@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -154,5 +155,97 @@ func Load(path string) (*Config, error) {
 		cfg.AI.APIURL = "https://api.anthropic.com/v1/messages"
 	}
 
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
+}
+
+// Validate performs security and sanity checks on the configuration
+func (c *Config) Validate() error {
+	// Validate watch path
+	if c.WatchPath == "" {
+		return fmt.Errorf("watch_path is required")
+	}
+
+	// Validate paths don't escape root
+	if err := validatePath(c.WatchPath); err != nil {
+		return fmt.Errorf("invalid watch_path: %w", err)
+	}
+	if err := validatePath(c.BaselinePath); err != nil {
+		return fmt.Errorf("invalid baseline_path: %w", err)
+	}
+	if err := validatePath(c.QuarantinePath); err != nil {
+		return fmt.Errorf("invalid quarantine_path: %w", err)
+	}
+	if err := validatePath(c.LogPath); err != nil {
+		return fmt.Errorf("invalid log_path: %w", err)
+	}
+
+	// Validate ports
+	if c.HTTP.Port < 0 || c.HTTP.Port > 65535 {
+		return fmt.Errorf("invalid HTTP port: %d", c.HTTP.Port)
+	}
+	if c.Syslog.Port < 0 || c.Syslog.Port > 65535 {
+		return fmt.Errorf("invalid syslog port: %d", c.Syslog.Port)
+	}
+	if c.Email.SMTPPort < 0 || c.Email.SMTPPort > 65535 {
+		return fmt.Errorf("invalid SMTP port: %d", c.Email.SMTPPort)
+	}
+
+	// Validate polling interval
+	if c.PollIntervalSec < 1 {
+		return fmt.Errorf("poll_interval_sec must be >= 1")
+	}
+
+	// Validate rate limiting
+	if c.RateLimit.WindowSec < 1 {
+		return fmt.Errorf("rate_limit.window_sec must be >= 1")
+	}
+	if c.RateLimit.MaxAlerts < 1 {
+		return fmt.Errorf("rate_limit.max_alerts must be >= 1")
+	}
+
+	// Validate AI config if enabled
+	if c.AI.Enabled {
+		if c.AI.Provider != "openrouter" && c.AI.Provider != "anthropic" {
+			return fmt.Errorf("invalid AI provider: %s", c.AI.Provider)
+		}
+		if c.AI.APIKey == "" {
+			return fmt.Errorf("AI enabled but api_key not set")
+		}
+		if c.AI.Model == "" {
+			return fmt.Errorf("AI enabled but model not set")
+		}
+	}
+
+	// Validate max file size
+	if c.Scanner.MaxFileSizeMB < 1 {
+		return fmt.Errorf("max_file_size_mb must be >= 1")
+	}
+
+	return nil
+}
+
+// validatePath ensures path doesn't contain null bytes or suspicious patterns
+func validatePath(path string) error {
+	if path == "" {
+		return nil // empty paths are OK (optional)
+	}
+	if containsNullByte(path) {
+		return fmt.Errorf("path contains null bytes")
+	}
+	return nil
+}
+
+func containsNullByte(s string) bool {
+	// Check if string contains null byte
+	for _, b := range []byte(s) {
+		if b == 0 {
+			return true
+		}
+	}
+	return false
 }

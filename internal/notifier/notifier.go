@@ -12,6 +12,7 @@ import (
 	"net/smtp"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/cbuntingde/wp-guard/internal/config"
@@ -26,6 +27,7 @@ type Notifier struct {
 	hooksCfg  config.HooksConfig
 	logPath  string
 	logFile  *os.File
+	logMu    sync.Mutex
 }
 
 func NewNotifier(cfg config.TelegramConfig, emailCfg config.EmailConfig, slackCfg config.SlackConfig, discordCfg config.DiscordConfig, syslogCfg config.SyslogConfig, hooksCfg config.HooksConfig, logPath string) (*Notifier, error) {
@@ -173,6 +175,15 @@ func (n *Notifier) sendTelegram(text string) error {
 	}
 
 	return nil
+}
+
+func tlsDial(network, addr, host string) (net.Conn, error) {
+	tlsCfg := &tls.Config{
+		ServerName:         host,
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: false,
+	}
+	return tls.Dial(network, addr, tlsCfg)
 }
 
 func (n *Notifier) sendEmail(text string, severity string) error {
@@ -355,18 +366,6 @@ func (n *Notifier) sendSyslog(a Alert) error {
 	return err
 }
 
-func tlsDial(network, addr, hostname string) (net.Conn, error) {
-	tlsConfig := &tls.Config{
-		ServerName:         hostname,
-		InsecureSkipVerify: false,
-	}
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
 func (n *Notifier) runHook(a Alert, msg string) {
 	var script string
 	switch a.Severity {
@@ -417,6 +416,8 @@ func (n *Notifier) log(a Alert) {
 	if n.logFile == nil {
 		return
 	}
+	n.logMu.Lock()
+	defer n.logMu.Unlock()
 	entry, _ := json.Marshal(a)
 	n.logFile.Write(append(entry, '\n'))
 }
