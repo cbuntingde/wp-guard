@@ -1,13 +1,11 @@
-<p style="color: red; font-weight: bold;">(TEST PROJECT - NEEDS THOROUGH TESTING! Not meant for production. /CB)</p>
+> [!WARNING]
+> **TEST PROJECT - NEEDS THOROUGH TESTING!** This is not meant for production use. /CB
 
-# wp-guard 
+# wp-guard
 
-<p align="center">
-  <strong>Enterprise-Grade WordPress Security Monitor</strong><br>
-  <a href="https://github.com/cbuntingde/wp-guard/releases"><img src="https://img.shields.io/github/v/release/cbuntingde/wp-guard" alt="Version"></a>
-  <a href="https://github.com/cbuntingde/wp-guard/blob/master/LICENSE"><img src="https://img.shields.io/github/license/cbuntingde/wp-guard" alt="License"></a>
-  <a href="https://goreportcard.com/report/github.com/cbuntingde/wp-guard"><img src="https://goreportcard.com/badge/github.com/cbuntingde/wp-guard" alt="Go Report"></a>
-</p>
+[![Version](https://img.shields.io/github/v/release/cbuntingde/wp-guard)](https://github.com/cbuntingde/wp-guard/releases)
+[![License](https://img.shields.io/github/license/cbuntingde/wp-guard)](LICENSE)
+[![Go Report](https://goreportcard.com/badge/github.com/cbuntingde/wp-guard)](https://goreportcard.com/report/github.com/cbuntingde/wp-guard)
 
 wp-guard is a standalone WordPress file integrity monitor and malware scanner. It runs as a separate daemon — if WordPress goes down, wp-guard keeps watching and alerts you.
 
@@ -21,6 +19,7 @@ wp-guard is a standalone WordPress file integrity monitor and malware scanner. I
 ## Features
 
 ### Security Monitoring
+
 - **File Integrity Monitoring** — Detects new, modified, and deleted files
 - **Malware Scanning** — Pattern-matches for known backdoor signatures (`base64_decode`, `eval` with user input, `shell_exec`, etc.)
 - **AI Triage** — Optional LLM-powered code analysis via OpenRouter (Claude, GPT)
@@ -28,6 +27,7 @@ wp-guard is a standalone WordPress file integrity monitor and malware scanner. I
 - **Baseline Tracking** — JSON baseline stores every file hash, mode, and timestamp
 
 ### Notifications (Choose Your Channel)
+
 - **Telegram** — Instant bot notifications
 - **Slack** — Color-coded attachments
 - **Discord** — Rich embeds
@@ -36,12 +36,14 @@ wp-guard is a standalone WordPress file integrity monitor and malware scanner. I
 - **Webhooks** — Run custom scripts on alerts
 
 ### Operations
+
 - **HTTP API** — Remote monitoring endpoint
 - **Prometheus Metrics** — `/metrics` endpoint for Prometheus
 - **Rate Limiting** — Prevent alert storms during plugin updates
 - **Config Hot-Reload** — SIGHUP to reload without restart
 
 ### CLI Commands
+
 - `scan` — Scan all PHP files for malicious code
 - `scan-plugin` — Scan specific plugin or all plugins
 - `baseline` — Initialize or refresh baseline
@@ -225,6 +227,7 @@ echo "$WP_ALERT_MESSAGE"
 ```
 
 Available variables:
+
 - `WP_ALERT_SEVERITY` — CRITICAL, WARN, INFO
 - `WP_ALERT_FILE` — File path
 - `WP_ALERT_EVENT` — create, modify, delete
@@ -244,6 +247,7 @@ scrape_configs:
 ```
 
 Metrics:
+
 - `wp_guard_files_tracked` — Gauge
 - `wp_guard_alerts_total` — Counter
 - `wp_guard_alerts_24h` — Gauge
@@ -260,8 +264,8 @@ wp-guard/
 ├── internal/
 │   ├── config/          # YAML config
 │   ├── scanner/        # Malware patterns
-│   ├── watcher/        # File monitoring
-│   ├── store/           # Baseline management
+│   ├── watcher/         # File monitoring
+│   ├── store/          # Baseline management
 │   ├── quarantine/      # File isolation
 │   ├── notifier/        # All notification channels
 │   ├── server/          # HTTP API
