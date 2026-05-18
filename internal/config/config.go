@@ -14,7 +14,9 @@ type Config struct {
 	LogFormat     string        `yaml:"log_format"`
 	PollIntervalSec int           `yaml:"poll_interval_sec"`
 	HTTP          HTTPConfig     `yaml:"http"`
+	RateLimit     RateLimitConfig `yaml:"rate_limit"`
 	AI            AIConfig      `yaml:"ai"`
+	AutoFix       AutoFixConfig `yaml:"auto_fix"`
 	Telegram      TelegramConfig `yaml:"telegram"`
 	Email         EmailConfig  `yaml:"email"`
 	Slack         SlackConfig  `yaml:"slack"`
@@ -23,17 +25,25 @@ type Config struct {
 	Hooks         HooksConfig  `yaml:"hooks"`
 	WordPress     WPConfig    `yaml:"wordpress"`
 	Scanner       ScannerConfig `yaml:"scanner"`
-	AutoFix       bool       `yaml:"auto_fix"`
-	NotifyOnClean  bool       `yaml:"notify_on_clean"`
+	NotifyOnClean  bool         `yaml:"notify_on_clean"`
 }
 
 type AIConfig struct {
 	Enabled      bool   `yaml:"enabled"`
-	Provider     string `yaml:"provider"` // "openrouter", "claude", "mock"
-	Model        string `yaml:"model"`
-	APIKey       string `yaml:"api_key"`
-	APIURL       string `yaml:"api_url"`
+	Provider    string `yaml:"provider"` // "openrouter", "anthropic", "mock"
+	Model       string `yaml:"model"`
+	APIKey      string `yaml:"api_key"`
+	APIURL      string `yaml:"api_url"`
 	SystemPrompt string `yaml:"system_prompt"`
+}
+
+type AutoFixConfig struct {
+	Enabled        bool   `yaml:"enabled"`
+	PluginsOnly     bool   `yaml:"plugins_only"`     // only auto-fix plugins dir
+	CreateBackup   bool   `yaml:"create_backup"`   // keep backup before fix
+	MaxRetries     int    `yaml:"max_retries"`     // retry attempts
+	RollbackOnFail bool   `yaml:"rollback_on_fail"` // auto-rollback if health check fails
+	HealthCheckURL string `yaml:"health_check_url"` // WP health check endpoint
 }
 
 type TelegramConfig struct {
@@ -139,6 +149,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.RateLimit.MaxAlerts == 0 {
 		cfg.RateLimit.MaxAlerts = 5
+	}
+	if cfg.AI.APIURL == "" && cfg.AI.Provider == "anthropic" {
+		cfg.AI.APIURL = "https://api.anthropic.com/v1/messages"
 	}
 
 	return &cfg, nil

@@ -14,22 +14,31 @@ log_format: text  # text or json
 # How often to check for file changes (seconds)
 poll_interval_sec: 30
 
-# Auto-fix: quarantine suspicious files and restore from baseline
-auto_fix: true
-
 # Notify even when a clean file changes (update baseline silently)
 notify_on_clean: false
 
-# AI Triage (optional)
+# AI Triage - use OpenRouter or Anthropic API
 ai:
   enabled: false
-  provider: openrouter
+  provider: openrouter  # "openrouter" or "anthropic"
   model: anthropic/claude-3-haiku
   api_key: ""
+  # OpenRouter:
   api_url: https://openrouter.ai/api/v1/chat/completions
+  # Anthropic (optional - will use default if not set):
+  # api_url: https://api.anthropic.com/v1/messages
   system_prompt: |
     You are a WordPress security analyzer. Given PHP code, respond with JSON:
     {"malicious": bool, "confidence": 0.0-1.0, "reason": "...", "recommendation": "..."}
+
+# Auto-fix - AI-powered remediation with rollback protection
+auto_fix:
+  enabled: false
+  plugins_only: true   # only auto-fix in plugins dir (safer)
+  create_backup: true # keep backups before applying fixes
+  max_retries: 2      # retry attempts on failure
+  rollback_on_fail: true  # auto-rollback if health check fails
+  health_check_url: https://example.com/wp-admin/admin-ajax.php?action=health_check
 
 # Telegram notifications
 telegram:

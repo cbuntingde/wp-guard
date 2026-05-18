@@ -177,8 +177,8 @@ func (s *Scanner)AITriage(ctx context.Context, path string, codeSnippet string) 
 	switch s.aiCfg.Provider {
 	case "openrouter":
 		return s.openrouterTriage(ctx, codeSnippet)
-	case "claude":
-		return s.openrouterTriage(ctx, codeSnippet) // same API shape
+	case "anthropic":
+		return s.anthropicTriage(ctx, codeSnippet)
 	default:
 		return &AITriageResult{Malicious: false, Confidence: 0}, nil
 	}
@@ -242,4 +242,194 @@ func (s *Scanner) openrouterTriage(ctx context.Context, code string) (*AITriageR
 	}
 
 	return &triage, nil
+}
+
+// AITriageAndFix uses AI to analyze code and generate a safe fix
+func (s *Scanner) AITriageAndFix(ctx context.Context, path string, code string) (*AITriageResult, string, error) {
+	if !s.aiCfg.Enabled {
+		return &AITriageResult{Confidence: 0}, "", nil
+	}
+
+	var triage *AITriageResult
+	var err error
+
+	switch s.aiCfg.Provider {
+	case "openrouter":
+		triage, err = s.openrouterTriage(ctx, code)
+	case "anthropic":
+		triage, err = s.anthropicTriage(ctx, code)
+	default:
+		return &AITriageResult{Confidence: 0}, "", nil
+	}
+
+	if err != nil || !triage.Malicious {
+		return triage, "", err
+	}
+
+	// Generate fix if malicious
+	fix, err := s.generateFix(ctx, code, triage.Recommendation)
+	return triage, fix, err
+}
+
+func (s *Scanner) generateFix(ctx context.Context, code string, recommendation string) (string, error) {
+	prompt := fmt.Sprintf(`Analyze this PHP code and fix the security issue.
+
+Current code:
+%s
+
+Security issue: %s
+
+Generate the fixed PHP code. Return ONLY the fixed code, no explanations or markdown. The fix should:
+1. Remove or sanitize the malicious payload
+2. Keep legitimate functionality
+3. Be valid PHP syntax`, code, recommendation)
+
+if s.aiCfg.Provider == "anthropic" {
+	return s.anthropicGenerate(ctx, prompt)
+}
+	return s.openrouterGenerate(ctx, prompt)
+}
+
+func (s *Scanner) openrouterGenerate(ctx context.Context, prompt string) (string, error) {
+	payload := map[string]interface{}{
+		"model": s.aiCfg.Model,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"temperature": 0.2,
+	}
+
+	reqBody, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", s.aiCfg.APIURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.aiCfg.APIKey)
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	if len(result.Choices) == 0 {
+		return "", nil
+	}
+
+	raw := result.Choices[0].Message.Content
+	raw = strings.TrimPrefix(raw, "```php")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	return strings.TrimSpace(raw), nil
+}
+
+func (s *Scanner) anthropicTriage(ctx context.Context, code string) (*AITriageResult, error) {
+	systemPrompt := s.aiCfg.SystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = "You are a WordPress security analyzer. Given PHP code, respond with JSON: {\"malicious\": bool, \"confidence\": 0.0-1.0, \"reason\": \"...\", \"recommendation\": \"...\"}"
+	}
+
+	payload := map[string]interface{}{
+		"model": s.aiCfg.Model,
+		"max_tokens": 1024,
+		"system": systemPrompt,
+		"messages": []map[string]string{
+			{"role": "user", "content": fmt.Sprintf("Analyze this PHP code for WordPress security issues:\n\n%s", code)},
+		},
+	}
+
+	reqBody, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", s.aiCfg.APIURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", s.aiCfg.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Content struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	raw := result.Content.Text
+	raw = strings.TrimPrefix(raw, "```json")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	raw = strings.TrimSpace(raw)
+
+	var triage AITriageResult
+	if err := json.Unmarshal([]byte(raw), &triage); err != nil {
+		return nil, err
+	}
+
+	return &triage, nil
+}
+
+func (s *Scanner) anthropicGenerate(ctx context.Context, prompt string) (string, error) {
+	payload := map[string]interface{}{
+		"model": s.aiCfg.Model,
+		"max_tokens": 4096,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+	}
+
+	reqBody, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", s.aiCfg.APIURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", s.aiCfg.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Content struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	raw := result.Content.Text
+	raw = strings.TrimPrefix(raw, "```php")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	return strings.TrimSpace(raw), nil
 }

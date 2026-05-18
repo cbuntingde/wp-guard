@@ -123,16 +123,10 @@ func main() {
 
 	// Wait for interrupt
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 
 	log.Println("Shutting down...")
-
-	// Reload config on SIGHUP
-	if _, ok := <-sig; ok == nil {
-		log.Println("SIGHUP received, reloading config...")
-		// Reload logic would go here
-	}
 	cancel()
 	w.Stop()
 	notifier.NotifyShutdown(cfg.Telegram)
