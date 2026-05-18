@@ -1,3 +1,5 @@
+<p style="color: red; font-weight: bold;">(TEST PROJECT - NEEDS THOROUGH TESTING! Not meant for production. /CB)</p>
+
 # wp-guard 
 
 <p align="center">
