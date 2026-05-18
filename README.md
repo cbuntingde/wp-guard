@@ -1,4 +1,4 @@
-# wp-guard (TEST PROJECT - NEEDS THOROUGH TESTING! Not meant for production. /CB)
+# wp-guard ###(TEST PROJECT - NEEDS THOROUGH TESTING! Not meant for production. /CB)
 
 <p align="center">
   <strong>Enterprise-Grade WordPress Security Monitor</strong><br>
