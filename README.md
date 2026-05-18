@@ -7,16 +7,52 @@
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat)]
 [![Go Version](https://img.shields.io/badge/Go-1.18+-00ADD8?style=flat&logo=go)](https://go.dev/doc/install)
 [![Tests](https://img.shields.io/badge/tests-50%2B-green?style=flat)]
+[![AI Auto-Fix](https://img.shields.io/badge/AI%20Auto--Fix-Rollback-FF6B6B?style=flat&logo=anthropic)](https://anthropic.com)
 
-wp-guard is a standalone WordPress file integrity monitor and malware scanner. It runs as a separate daemon — if WordPress goes down, wp-guard keeps watching and alerts you.
+wp-guard is a standalone WordPress file integrity monitor and malware scanner with **AI-powered auto-remediation and automatic rollback**. It runs as a separate daemon — if WordPress goes down, wp-guard keeps watching and alerts you.
 
 ## Status: Production Ready ✅
 
 - **Security Headers** — Full HSTS, CSP, X-Frame-Options protection
-- **Input Validation** — Comprehensive config validation
+- **AI Auto-Fix with Rollback** — Automatic malware removal with health checks
+- **Input Validation** — Comprehensive config validation  
 - **File Permissions** — Secure file modes (0600/0700)
 - **Test Coverage** — 50+ unit tests
 - **Rate Limiting** — Alert storm prevention
+
+## 🚨 AI Auto-Fix with Rollback (Top Feature)
+
+wp-guard's **AI Auto-Fix** automatically removes malicious code and verifies the fix with WordPress health checks. If WP fails to respond, it **automatically rolls back** to the quarantined version.
+
+```yaml
+auto_fix:
+  enabled: true
+  plugins_only: true      # only auto-fix plugins dir (safer)
+  create_backup: true    # keep backups before fix
+  max_retries: 3        # retry attempts before giving up
+  rollback_on_fail: true # auto-rollback if health check fails
+  health_check_url: "https://yoursite.com/wp-admin/admin-ajax.php?action=health_check"
+```
+
+**How it works:**
+1. Scanner detects malicious patterns (base64_decode, eval with user input, etc.)
+2. AI analyzes code and generates safe fix
+3. Original file backed up to `backups/` directory
+4. Fixed file written to disk
+5. WordPress health check verifies site still works
+6. If health check fails → automatic rollback from backup
+
+### AI Triage (Optional)
+
+Reduce false positives with LLM-powered code analysis:
+
+```yaml
+ai:
+  enabled: true
+  provider: openrouter  # or "anthropic"
+  model: anthropic/claude-3-haiku
+  api_key: "API_KEY"
+```
 
 ## Why wp-guard?
 
@@ -27,12 +63,17 @@ wp-guard is a standalone WordPress file integrity monitor and malware scanner. I
 
 ## Features
 
-### Security Monitoring
+### 🔥 AI Auto-Fix (Top Feature)
+- **Auto-Remediate** — Automatically remove malicious code patterns
+- **Automatic Rollback** — Reverts to backup if WordPress health check fails
+- **Backup Protection** — Keeps backups before any changes
+- **Health Check Verification** — Verifies WP still works after fix
+- **Plugin-Only Mode** — Restrict to plugins directory for safety
 
+### Security Monitoring
 - **File Integrity Monitoring** — Detects new, modified, and deleted files
 - **Malware Scanning** — Pattern-matches for known backdoor signatures (`base64_decode`, `eval` with user input, `shell_exec`, etc.)
 - **AI Triage** — Optional LLM-powered code analysis via OpenRouter or Anthropic API
-- **AI Auto-Fix** — Auto-remediate exploits with rollback protection
 - **Quarantine** — Auto-isolate suspicious files for review
 - **Baseline Tracking** — JSON baseline stores every file hash, mode, and timestamp
 - **Plugin Guardrails** — Enhanced monitoring for `wp-content/plugins/`
