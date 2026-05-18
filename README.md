@@ -22,9 +22,11 @@ wp-guard is a standalone WordPress file integrity monitor and malware scanner. I
 
 - **File Integrity Monitoring** — Detects new, modified, and deleted files
 - **Malware Scanning** — Pattern-matches for known backdoor signatures (`base64_decode`, `eval` with user input, `shell_exec`, etc.)
-- **AI Triage** — Optional LLM-powered code analysis via OpenRouter (Claude, GPT)
+- **AI Triage** — Optional LLM-powered code analysis via OpenRouter or Anthropic API
+- **AI Auto-Fix** — Auto-remediate exploits with rollback protection
 - **Quarantine** — Auto-isolate suspicious files for review
 - **Baseline Tracking** — JSON baseline stores every file hash, mode, and timestamp
+- **Plugin Guardrails** — Enhanced monitoring for `wp-content/plugins/`
 
 ### Notifications (Choose Your Channel)
 
@@ -40,7 +42,6 @@ wp-guard is a standalone WordPress file integrity monitor and malware scanner. I
 - **HTTP API** — Remote monitoring endpoint
 - **Prometheus Metrics** — `/metrics` endpoint for Prometheus
 - **Rate Limiting** — Prevent alert storms during plugin updates
-- **Config Hot-Reload** — SIGHUP to reload without restart
 
 ### CLI Commands
 
@@ -126,9 +127,17 @@ syslog:
 # AI Triage (optional)
 ai:
   enabled: false
-  provider: openrouter
+  provider: openrouter  # "openrouter" or "anthropic"
   model: anthropic/claude-3-haiku
-  api_key: "OPENROUTER_API_KEY"
+  api_key: "API_KEY"
+
+# Auto-fix (AI-powered remediation)
+auto_fix:
+  enabled: false
+  plugins_only: true   # only auto-fix plugins dir (safer)
+  create_backup: true # keep backups before fix
+  rollback_on_fail: true  # auto-rollback if WP fails
+  health_check_url: "https://yoursite.com/wp-admin/admin-ajax.php?action=health_check"
 
 # Hooks (run scripts on alerts)
 hooks:
@@ -263,15 +272,16 @@ wp-guard/
 │   └── wp-guard/        # CLI
 ├── internal/
 │   ├── config/          # YAML config
-│   ├── scanner/        # Malware patterns
-│   ├── watcher/         # File monitoring
+│   ├── scanner/         # Malware patterns + AI triage
+│   ├── watcher/        # File monitoring
 │   ├── store/          # Baseline management
-│   ├── quarantine/      # File isolation
-│   ├── notifier/        # All notification channels
-│   ├── server/          # HTTP API
-│   └── logger/          # JSON logging
+│   ├── quarantine/     # File isolation
+│   ├── autofix/        # AI auto-fix with rollback
+│   ├── notifier/       # All notification channels
+│   ├── server/        # HTTP API
+│   └── logger/        # JSON logging
 ├── scripts/
-│   └── install.sh       # systemd installer
+│   └── install.sh      # systemd installer
 └── wp-guard.yaml.example
 ```
 
