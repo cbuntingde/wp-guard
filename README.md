@@ -3,8 +3,8 @@
 
 # wp-guard
 
-[![Version](https://img.shields.io/github/v/tag/cbuntingde/wp-guard)](https://github.com/cbuntingde/wp-guard/tags)
-[![License](https://img.shields.io/github/license/cbuntingde/wp-guard)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue?style=flat)]
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat)]
 [![Go Version](https://img.shields.io/badge/Go-1.18+-00ADD8?style=flat&logo=go)](https://go.dev/doc/install)
 
 wp-guard is a standalone WordPress file integrity monitor and malware scanner. It runs as a separate daemon — if WordPress goes down, wp-guard keeps watching and alerts you.
