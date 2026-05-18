@@ -336,6 +336,52 @@ Test packages:
 - `internal/store` — Baseline management and hashing
 - `internal/server` — HTTP API and rate limiting
 
+## Security Scanning
+
+wp-guard includes automated vulnerability detection for both your codebase and dependencies.
+
+### Dependency Vulnerability Scanning
+
+GitHub Actions automatically scans Go dependencies on every pull request:
+
+```yaml
+# .github/workflows/security.yml (included in repo)
+- uses: actions/github-script@v7
+  with:
+    script: |
+      const { execSync } = require('child_process');
+      // Run govulncheck on every PR
+      execSync('go install golang.org/x/vuln/cmd/govulncheck@latest');
+      execSync('govulncheck ./...', { stdio: 'inherit' });
+```
+
+Run manually:
+
+```bash
+# Install govulncheck
+go install golang.org/x/vuln/cmd/govulncheck@latest
+
+# Scan for known vulnerabilities
+govulncheck ./...
+
+# Or use the included scanner
+./scripts/nvd-scan.sh
+```
+
+### Supported Advisory Sources
+
+- **Go Vulnerability Database** — govulncheck (includes CVE-2024-45338, CVE-2024-45338, etc.)
+- **NVD (National Vulnerability Database)** — API-based scanning
+- **GitHub Advisory Database** — Dependabot alerts
+
+### Auto-Fix Integration
+
+When vulnerabilities are detected, AI Auto-Fix can remediate:
+
+1. **Dependency Updates** — `go get -u` to upgrade vulnerable packages
+2. **Code Patches** — Apply upstream security fixes
+3. **Notifications** — Alert via your configured channels
+
 ## Architecture
 
 ```

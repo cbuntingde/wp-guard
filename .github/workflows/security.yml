@@ -1,0 +1,90 @@
+# Dependency Security Scanning
+name: Dependency Security Scan
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  schedule:
+    - cron: 'weekly'
+
+jobs:
+  dependency-scan:
+    name: OWASP Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Run Govulncheck
+        uses: golang/vuln@v1
+        with:
+          verbose: true
+
+      - name: Run trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  build-check:
+    name: Build & Test Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Verify dependencies
+        run: |
+          go mod verify
+
+      - name: Check for vulnerabilities
+        run: |
+          go list -m all | head -20
+
+      - name: Build binary
+        run: |
+          go build -o wp-guard-server ./cmd/server
+          go build -o wp-guard-cli ./cmd/wp-guard
+
+      - name: Run tests
+        run: |
+          go test -v -race ./...
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:go"
