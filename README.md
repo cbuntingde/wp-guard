@@ -11,14 +11,13 @@
 
 wp-guard is a standalone WordPress file integrity monitor and malware scanner with **AI-powered auto-remediation and automatic rollback**. It runs as a separate daemon — if WordPress goes down, wp-guard keeps watching and alerts you.
 
-## Status: Production Ready ✅
+## Current Status: Testing 🧪
 
 - **Security Headers** — Full HSTS, CSP, X-Frame-Options protection
 - **AI Auto-Fix with Rollback** — Automatic malware removal with health checks
+- **AI Auto-Fix** — Automatic malware removal with rollback
 - **Input Validation** — Comprehensive config validation  
-- **File Permissions** — Secure file modes (0600/0700)
 - **Test Coverage** — 50+ unit tests
-- **Rate Limiting** — Alert storm prevention
 
 ## 🚨 AI Auto-Fix with Rollback (Top Feature)
 
